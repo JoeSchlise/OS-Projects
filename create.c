@@ -49,7 +49,7 @@ syscall create(void *funcaddr, ulong ssize, char *name, ulong nargs, ...)
     strncpy(ppcb->name,name,PNMLEN);
     ppcb->state = PRSUSP;
     ppcb->stklen = ssize;
-    ppcb->stkbase = (ulong)saddr;
+    ppcb->stkbase = (void *)saddr;
     /* Initialize stack with accounting block. */
 
     *saddr = STACKMAGIC;
@@ -70,23 +70,30 @@ syscall create(void *funcaddr, ulong ssize, char *name, ulong nargs, ...)
     }
     // TODO: Initialize process context.
     //
-    // TODO:  Place arguments into context and/or activation record.
-    //        See K&R 7.3 for example using va_start, va_arg and
-    //        va_end macros for variable argument functions.
     for (i = 0; i < CONTEXT; i++) {
         ppcb->ctx[i] = 0;
     }
     ppcb->ctx[CTX_RA] = (ulong)userret;
     ppcb->ctx[CTX_PC] = (ulong)funcaddr;
     ppcb->ctx[CTX_SP] = (ulong)saddr;
-    va_start(ap, nargs);
-     for (i = 0; i < nargs && i < ARG_REG_MAX; i++) {
-            ppcb->ctx[CTX_A0 + i] = va_arg(ap, ulong);
-    }
+
+    // TODO:  Place arguments into context and/or activation record.
+    //        See K&R 7.3 for example using va_start, va_arg and
+    //        va_end macros for variable argument functions.
+    //saddr[0] = //arg 8;
+    //ppcb->ctx[CTX_A0] =
+            //less tha 8 goes in cxt block
+            //more than 8 goes in stack
+            //
+    va_start(ap,nargs);
+    for (i = 0; i < nargs && i < ARG_REG_MAX; i++) {
+        ppcb->ctx[CTX_A0 + i] = va_arg(ap, ulong);
+     }
 
     for(i = ARG_REG_MAX; i < nargs; i++) {
-            *--saddr = va_arg(ap, ulong);
+       *--saddr = va_arg(ap, ulong);
     }
+
     return pid;
 }
 
@@ -98,6 +105,7 @@ static pid_typ newpid(void)
 {
     pid_typ pid;                /* process id to return     */
     static pid_typ nextpid = 0;
+
 
     for (pid = 0; pid < NPROC; pid++)
     {                           /* check all NPROC slots    */
