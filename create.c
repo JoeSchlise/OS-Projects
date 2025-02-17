@@ -76,11 +76,12 @@ syscall create(void *funcaddr, ulong ssize, char *name, ulong nargs, ...)
     ppcb->ctx[CTX_RA] = (ulong)userret;
     ppcb->ctx[CTX_PC] = funcaddr;
     ppcb->ctx[CTX_SP] = saddr;
+    va_start(ap, nargs);
      for (i = 0; i < nargs && i < ARG_REG_MAX; i++) {
             ppcb->ctx[CTX_A0 + i] = va_arg(ap, ulong);
     }
 
-    for(i = 0; i < nargs; i++) {
+    for(i = ARG_REG_MAX; i < nargs; i++) {
             *--saddr = va_arg(ap, ulong);
     }
     return pid;
