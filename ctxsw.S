@@ -30,7 +30,7 @@ ctxsw:
 
 // TODO: Save process state, including at least the
 //      callee-save ("non-volatile") registers.
-/*      sd s0,CTX_S0*8(a0)
+        sd s0,CTX_S0*8(a0)
         sd s1,CTX_S1*8(a0)
         sd s2,CTX_S2*8(a0)
         sd s3,CTX_S3*8(a0)
