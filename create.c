@@ -73,7 +73,9 @@ syscall create(void *funcaddr, ulong ssize, char *name, ulong nargs, ...)
     // TODO:  Place arguments into context and/or activation record.
     //        See K&R 7.3 for example using va_start, va_arg and
     //        va_end macros for variable argument functions.
-
+    ppcb->ctx[CTX_RA] = (ulong)userret;
+    ppcb->ctx[CTX_PC] = funcaddr;
+    ppcb->ctx[CTX_SP] = saddr;
      for (i = 0; i < nargs && i < ARG_REG_MAX; i++) {
             ppcb->ctx[CTX_A0 + i] = va_arg(ap, ulong);
     }
