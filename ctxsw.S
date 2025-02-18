@@ -29,7 +29,10 @@
 ctxsw:
 
 // TODO: Save process state, including at least the
-//      callee-save ("non-volatile") registers.
+ //     callee-save ("non-volatile") registers.
+        sd ra, CTX_PC*8(a0) //CHANGED THIS TO RA
+        sd ra,CTX_RA*8(a0) 
+        sd sp,CTX_SP*8(a0)
         sd s0,CTX_S0*8(a0)
         sd s1,CTX_S1*8(a0)
         sd s2,CTX_S2*8(a0)
@@ -42,27 +45,33 @@ ctxsw:
         sd s9,CTX_S9*8(a0)
         sd s10,CTX_S10*8(a0)
         sd s11,CTX_S11*8(a0)
-        sd ra,CTX_RA*8(a0)
-        sd sp,CTX_SP*8(a0)
 
-        sd t0, CTX_PC*8(a0)
-
+        ld ra, CTX_RA*8(a1)
         ld sp,CTX_SP*8(a1)
-        ld s0,CTX_S0*8(a1)
-        ld s1,CTX_S1*8(a1)
-        ld s2,CTX_S2*8(a1)
-        ld s3,CTX_S3*8(a1)
-        ld s4,CTX_S4*8(a1)
-        ld s5,CTX_S5*8(a1)
-        ld s6,CTX_S6*8(a1)
-        ld s7,CTX_S7*8(a1)
-        ld s8,CTX_S8*8(a1)
-        ld s9,CTX_S9*8(a1)
-        ld s10,CTX_S10*8(a1)
         ld s11,CTX_S11*8(a1)
-        ld ra,CTX_RA*8(a1)
-        ld t0, CTX_PC*8(a1)
+        ld s10,CTX_S10*8(a1)
+        ld s9,CTX_S9*8(a1)
+        ld s8,CTX_S8*8(a1)
+        ld s7,CTX_S7*8(a1)
+        ld s6,CTX_S6*8(a1)
+        ld s5,CTX_S5*8(a1)
+        ld s4,CTX_S4*8(a1)
+        ld s3,CTX_S3*8(a1)
+        ld s2,CTX_S2*8(a1)
+        ld s1,CTX_S1*8(a1)
+        ld s0,CTX_S0*8(a1)
 
+
+
+        ld t0, CTX_PC*8(a1)
+        ld a0, CTX_A0*8(a1)
+        ld a2, CTX_A2*8(a1)
+        ld a3, CTX_A3*8(a1)
+        ld a4, CTX_A4*8(a1)
+        ld a5, CTX_A5*8(a1)
+        ld a6, CTX_A6*8(a1)
+        ld a7, CTX_A7*8(a1)
+        ld a1, CTX_A1*8(a1) //HAD TO MOVE A1 TO END B/C WE ARE USING IT AS VARIABLE IN THE OTHER LOADING METHODS
 
         jalr zero, t0
 
