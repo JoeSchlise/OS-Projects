@@ -91,7 +91,7 @@ syscall create(void *funcaddr, ulong ssize, char *name, ulong nargs, ...)
      }
 
     for(i = ARG_REG_MAX; i < nargs; i++) {
-       *--saddr = va_arg(ap, ulong);
+       saddr[i - ARG_REG_MAX] = va_arg(ap, ulong); //NEED TO NOT DECREMENT AND TREAT AS AN ARRAY. THE FORMULA INSIDE PUTS AT 0, 1, 2
     }
 
     return pid;
