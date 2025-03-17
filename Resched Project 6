@@ -1,0 +1,89 @@
+/**
+ * @file resched.c
+ * @provides resched
+ *
+ * COSC 3250 Assignment 6
+ */
+/* Embedded XINU, Copyright (C) 2008,2024.  All rights reserved. */
+
+#include <xinu.h>
+
+extern void ctxsw(void *, void *);
+/**
+ * Reschedule processor to next ready process.
+ * Upon entry, currpid gives current process id.  Proctab[currpid].pstate
+ * gives correct NEXT state for current process if other than PRREADY.
+ * @return OK when the process is context switched back
+ */
+
+   int total_ticket_count() {
+        int total_tix = 0;
+        for (int i = 0; i < NPROC; i++) {
+                if (proctab[i].state == PRREADY || proctab[i].state == PRCURR) {
+                        total_tix = proctab[i].tickets + total_tix;
+                }
+
+        }
+        return total_tix;
+   }
+
+   int winner_selector(total_tix) {
+        int counter = 0;
+        int winner = random(total_tix);
+        for (int i = 0; i < NPROC; i++) {
+                if (proctab[i].state == PRREADY || proctab[i].state == PRCURR) {
+                        counter = proctab[i].tickets + counter;
+                        if (counter > winner) {
+                                return i;
+                        }
+                }
+        }
+        return 0;
+   }
+syscall resched(void)
+{
+    pcb *oldproc;               /* pointer to old process entry */
+    pcb *newproc;               /* pointer to new process entry */
+
+    oldproc = &proctab[currpid];
+
+    /* place current process at end of ready queue */
+    if (PRCURR == oldproc->state)
+    {
+        oldproc->state = PRREADY;
+        enqueue(currpid, readylist);
+    }
+
+    /**
+     * We recommend you use a helper function for the following:
+     * TODO: Get the total number of tickets from all processes that are in
+     * current and ready states.
+     * Use random() function to pick a random ticket.
+     * Traverse through the process table to identify which proccess has the
+     * random ticket value.  Remove process from queue.
+     * Set currpid to the new process.
+     */
+    int total_tix = total_ticket_count();
+    if (total_tix == 0) {
+            return SYSERR;
+    }
+    int winner_pid = winner_selector(total_tix);
+    if (winner_pid == -1) {
+            return SYSERR;
+    }
+
+
+    currpid = winner_pid;
+    remove(winner_pid);
+    newproc = &proctab[currpid];
+    newproc->state = PRCURR;    /* mark it currently running    */
+
+#if PREEMPT
+    preempt = QUANTUM;
+#endif
+    //kprintf("[5d %d]", oldproc-proctab, newproc-proctab); BRYLOW TEST LINE FOR SWITCHING
+    ctxsw(&oldproc->ctx, &newproc->ctx);
+
+    /* The OLD process returns here when resumed. */
+    return OK;
+}
