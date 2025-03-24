@@ -74,27 +74,21 @@ syscall mapPage(pgtbl pagetable, ulong vaddr, ulong paddr, int attr)
         ulong lvl1addr = PX(1, vaddr);
         ulong lvl0addr = PX(0, vaddr);
 
-        if (!(pagetable[lvl2addr] & PTE_V)) {
-                pgtbl lvl2_table = pgalloc();
-                pagetable[lvl2addr] = PA2PTE(lvl2_table) | PTE_V;
-
-        }
-        pgtbl lvl1_table = (pgtbl)PTE2PA(pagetable[lvl2addr]);
+    if (!(pagetable[lvl2addr] & PTE_V)) {
+        pagetable[lvl2addr] = PA2PTE(pgalloc()) | PTE_V;
+    }
+    pgtbl lvl2_table = (pgtbl)PTE2PA(pagetable[lvl2addr]);
 
 
-        if (!(pagetable[lvl1addr] & PTE_V)) {
-                pgtbl lvl1_table = pgalloc();
-                pagetable[lvl1addr] = PA2PTE(lvl1_table) | PTE_V;
-
-        }
-        pgtbl lvl0_table = (pgtbl)PTE2PA(pagetable[lvl1addr]);
+    if (!(lvl2_table[lvl1addr] & PTE_V)) {
+        lvl2_table[lvl1addr] = PA2PTE(pgalloc()) | PTE_V;
+    }
+    pgtbl lvl1_table = (pgtbl)PTE2PA(lvl2_table[lvl1addr]);
 
 
-        if (!(pagetable[lvl0addr] & PTE_V)) {
-                pgtbl lvl0_table = pgalloc();
-                pagetable[lvl0addr] = PA2PTE(lvl0_table) | PTE_V | attr;
-
-        }
+    if (!(lvl1_table[lvl0addr] & PTE_V)) {
+        lvl1_table[lvl0addr] = PA2PTE(paddr) | PTE_V | attr;
+    }
 
        sfence_vma();
 
@@ -111,8 +105,8 @@ syscall mapPage(pgtbl pagetable, ulong vaddr, ulong paddr, int attr)
     */
 
     //  DEBUGGING LINE:
-    //  kprintf("mapPage(pt:0x%X, v:0x%X, p:0x%0X, a:0x%03X)\r\n",
-    //          pagetable, vaddr, paddr, attr);
+      kprintf("mapPage(pt:0x%X, v:0x%X, p:0x%0X, a:0x%03X)\r\n",
+              pagetable, vaddr, paddr, attr);
 
     return OK;
 }
