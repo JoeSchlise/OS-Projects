@@ -1,0 +1,242 @@
+/**
+ * @file testcases.c
+ * @provides testcases
+ *
+ *
+ * Modified by:
+ *
+ * TA-BOT:MAILTO
+ *
+ */
+/* Embedded XINU, Copyright (C) 2023.  All rights reserved. */
+
+#include <xinu.h>
+
+/* This fake page table will allow you to test your printPageTable function
+ * without having paging completely working.
+ */
+pgtbl createFakeTable(void){
+        pgtbl root = pgalloc();
+        pgtbl lvl1 = pgalloc();
+        pgtbl lvl0 = pgalloc();
+
+        volatile ulong *pte = &(root[5]);
+        *pte = PA2PTE(lvl1) | PTE_V;
+
+        ulong *lvl1pte = &(lvl1[145]);
+        *lvl1pte = PA2PTE(lvl0) | PTE_V;
+
+        ulong *lvl0pte = &(lvl0[343]);
+        *lvl0pte = PA2PTE(0x1000) | PTE_W | PTE_R | PTE_V;
+
+        ulong *lvl0pte1 = &(lvl0[120]);
+        *lvl0pte1 = PA2PTE(0x4000) | PTE_X | PTE_R | PTE_V;
+
+        ulong *lvl0pte2 = &(lvl0[45]);
+        *lvl0pte2 = PA2PTE(0x8000) | PTE_X | PTE_R | PTE_V;
+
+        return root;
+}
+
+void printPageTable(pgtbl pagetable)
+{
+        if (!pagetable) {
+                kprintf("Page table is NULL\r\n");
+                return;
+        }
+        int i;
+        for (i = 0; i < 512; i++)  {
+                if(pagetable[i] & PTE_V) {
+                        ulong pa = PTE2PA(pagetable[i]);
+
+
+                        kprintf("Entry %d: PA = 0x%08X ", i, (uint32_t)pa);
+
+                        if (pagetable[i] & (PTE_R | PTE_W | PTE_X)) {
+                                kprintf("(Leaf: ");
+                                if (pagetable[i] & PTE_R) kprintf("R");
+                                if (pagetable[i] & PTE_W) kprintf("W");
+                                if (pagetable[i] & PTE_X) kprintf("X");
+                                kprintf(")\n\r");
+                        } else {
+                                kprintf("(Link)\t\t");
+                                printPageTable((pgtbl)pa);
+                        }
+                }
+        }
+        /*
+        * TODO: Write a function that prints out the page table.
+        * Your function should print out all *valid* page table entries in
+        * the page table.  If any of the entries are a link (if the
+        * Read/Write/Execute bits aren't set), recursively print that page
+        * table.  If it is a leaf, print the page table entry and the
+        * physical address is maps to.
+        */
+}
+
+/**
+ * testcases - called after initialization completes to test things.
+ */
+void testcases(void)
+{
+        uchar c;
+
+        kprintf("===TEST BEGIN===\r\n");
+
+        // TODO: Test your operating system!
+
+        c = kgetc();
+        switch (c)
+        {
+                case '0':
+                        // TODO: Write a testcase that creates a user process
+                        // and prints out it's page table
+                        break;
+                case '1':
+                        // TODO: Write a testcase that demonstrates a user
+                        // process cannot access certain areas of memory
+                        break;
+                case '2':
+                        // TODO: Write a testcase that demonstrates a user
+                        // process can read kernel variables but cannot write
+                        // to them
+                        break;
+                case '3':
+                        // TODO: Extra credit! Add handling in xtrap to detect
+                        // and print out a Null Pointer Exception.  Write a
+                        // testcase that demonstrates your OS can detect a
+                        // Null Pointer Exception.
+                        break;
+                case '4':
+                        kprintf("Testing fake page table printing:\r\n");
+                        pgtbl fakeTable = createFakeTable();
+                        printPageTable(fakeTable);
+                        break;
+                default:
+                        break;
+        }
+
+        kprintf("\r\n===TEST END===\r\n");
+        return;
+}
+[jschlise@morbius system]$ cat maps.c
+cat: maps.c: No such file or directory
+[jschlise@morbius system]$ cat map.c
+/**
+ * @file map.c
+ * @provides mapPage, mapAddressRange
+ *
+ * Modified by:
+ *
+ * TA-BOT:MAILTO
+ */
+/* Embedded Xinu, Copyright (C) 2013, 2025.  All rights reserved. */
+
+#include <xinu.h>
+
+syscall mapPage(pgtbl pagetable, ulong vaddr, ulong paddr, int attr);
+
+/**
+ * Maps a given virtual address range to a corresponding physical address range.
+ * @param pagetable    base pagetable
+ * @param vaddr        start of the virtual address range.
+ *                     This should be truncated to the nearest page boundry.
+ * @param paddr        start of the physical address range
+ * @param length       length of the range to map
+ * @param attr         any attributes to set on the page table entry
+ * @return             OK if successful, otherwise a SYSERR
+ */
+syscall mapAddressRange(pgtbl pagetable, ulong vaddr, ulong paddr,
+                        ulong length, int attr)
+{
+    ulong end;
+
+    // DEBUGGING LINE:
+    //    kprintf("mapAddressRange(0x%lX, 0x%lX, 0x%lX, 0x%lX, 0x%lX)\r\n",
+    //      pagetable, vaddr, paddr, length,  attr);
+
+    if (length == 0)
+    {
+        return SYSERR;
+    }
+
+    // Round the length, vaddr and paddr to the nearest page size
+    length = roundpage(length);
+    vaddr = (ulong)truncpage(vaddr);
+    paddr = (ulong)truncpage(paddr);
+    end = vaddr + length;
+
+    // Loop over the entire range
+    for (; vaddr < end; vaddr += PAGE_SIZE, paddr += PAGE_SIZE)
+    {
+        // Map the individual virtual pages into the table.
+        if (mapPage(pagetable, vaddr, paddr, attr) == SYSERR)
+        {
+            return SYSERR;
+        }
+    }
+
+    return OK;
+}
+
+/**
+ * Maps a page to a specific virtual address
+ * @param pagetable  base pagetable
+ * @param vaddr      virtual address at which the page will reside
+ * @param paddr      physical frame that will be mapped at the virtual address
+ * @param attr       any attributes to set on the page table entry
+ * @return           OK if successful, otherwise a SYSERR
+ */
+syscall mapPage(pgtbl pagetable, ulong vaddr, ulong paddr, int attr)
+{
+/**
+ * Starting at the base pagetable, traverse the hierarchical page table
+ *  structure for the virtual address.  Create pages along the way if they
+ *  don't exist.
+ */
+        ulong lvl2addr = PX(2, vaddr);
+        ulong lvl1addr = PX(1, vaddr);
+        ulong lvl0addr = PX(0, vaddr);
+
+        if (!(pagetable[lvl2addr] & PTE_V)) {
+                pgtbl lvl2_table = pgalloc();
+                pagetable[lvl2addr] = PA2PTE(lvl2_table) | PTE_V;
+
+        }
+        pgtbl lvl1_table = (pgtbl)PTE2PA(pagetable[lvl2addr]);
+
+
+        if (!(pagetable[lvl1addr] & PTE_V)) {
+                pgtbl lvl1_table = pgalloc();
+                pagetable[lvl1addr] = PA2PTE(lvl1_table) | PTE_V;
+
+        }
+        pgtbl lvl0_table = (pgtbl)PTE2PA(pagetable[lvl1addr]);
+
+
+        if (!(pagetable[lvl0addr] & PTE_V)) {
+                pgtbl lvl0_table = pgalloc();
+                pagetable[lvl0addr] = PA2PTE(lvl0_table) | PTE_V | attr;
+
+        }
+
+       sfence_vma();
+
+        return OK;
+    /**
+    * TODO:
+    * For each level in the page table, get the page table entry by masking
+    * and shifting the bits in the virtualaddr depending on the level.
+    * If the valid bit is set, use that pagetable for the next level
+    * Otherwise create the page by calling pgalloc().  Make sure to setup the
+    * page table entry accordingly. Call sfence_vma once finished to flush TLB
+    * Once you've traversed all three levels, set the attributes (attr) for
+    * the leaf page (don't forget to set the valid bit!)
+    */
+
+    //  DEBUGGING LINE:
+    //  kprintf("mapPage(pt:0x%X, v:0x%X, p:0x%0X, a:0x%03X)\r\n",
+    //          pagetable, vaddr, paddr, attr);
+
+    return OK;
+}
