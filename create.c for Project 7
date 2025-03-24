@@ -1,12 +1,15 @@
 /**
  * @file create.c
  * @provides create, newpid, userret
- *
+ *This program switches between processes and exits cleanly
+ * @author Joe Schlise and Mosa Abduljahlil
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO Joseph.schlise@marquette.edu Mosa.abduljalil@marquette.edu
  * COSC 3250 Assignment 4
  */
 /* Embedded XINU, Copyright (C) 2008.  All rights reserved. */
 #include <xinu.h>
-#define v_stack_addr 0x80000000
+
 static pid_typ newpid(void);
 void userret(void);
 void *getstk(ulong);
@@ -19,11 +22,11 @@ void *getstk(ulong);
  * @param nargs    number of arguments that follow
  * @return the new process id
  */
-syscall create(void *funcaddr, ulong ssize,unsigned int priority, char *name, ulong nargs, ...)
+syscall create(void *funcaddr, ulong ssize, uint priority, char *name, ulong nargs, ...)
 {
     ulong *saddr;               /* stack address                */
+    ulong pid;        /* stores new process id        */
     ulong *kstack;
-    ulong pid;                  /* stores new process id        */
     pcb *ppcb;                  /* pointer to proc control blk  */
     ulong i;
     va_list ap;                 /* points to list of var args   */
@@ -34,17 +37,11 @@ syscall create(void *funcaddr, ulong ssize,unsigned int priority, char *name, ul
 
     ssize = (ulong)((((ulong)(ssize + 3)) >> 2) << 2);
     /* round up to even boundary    */
-    //saddr = (ulong *)getstk(ssize);     /* allocate new stack and pid
-    saddr = (ulong *)pgalloc();
-    pid = newpid();
-    if ((((ulong *)SYSERR) == saddr) || (SYSERR == pid))
-    {
-        return SYSERR;
-    }
+    saddr = (ulong *)pgalloc();    /* allocate new stack and pid NEW LINE HERE  */
 
-    kstack = (ulong *)getstk(ssize);
+    pid = newpid();
     /* a little error checking      */
-    if ((((ulong *)SYSERR) == kstack) || (SYSERR == pid))
+    if ((((ulong *)SYSERR) == saddr) || (SYSERR == pid))
     {
         return SYSERR;
     }
@@ -54,29 +51,28 @@ syscall create(void *funcaddr, ulong ssize,unsigned int priority, char *name, ul
 
     // TODO: Setup PCB entry for new process.
     //
+
+
     strncpy(ppcb->name,name,PNMLEN);
     ppcb->state = PRSUSP;
     ppcb->stklen = ssize;
     ppcb->stkbase = (void *)saddr;
-    ppcb->tickets = priority; //added
-    /* Initialize stack with accounting block. */
-//calc saadr before accounting block
+    ppcb->tickets = priority;
     ppcb->pagetable = vm_userinit(pid, saddr);
-    ppcb->ctx[CTX_SP] = v_stack_addr + ssize;
-
-    ppcb->swaparea = (ulong *)pgalloc();
+    ppcb->ctx[CTX_SP] = PAGE_SIZE + ssize;
+    /* Initialize stack with accounting block. */
+     ppcb->swaparea = (ulong *)pgalloc();
     if(ppcb->swaparea == (ulong *)SYSERR){
             return SYSERR;
     }
     ppcb->swaparea[CTX_KERNSATP] = MAKE_SATP(0, (ulong)_kernpgtbl);
     ppcb->swaparea[CTX_KERNSP] = (ulong)kstack;
-/*
-    *saddr = STACKMAGIC;
+    saddr = (ulong*)(((ulong) saddr) + PAGE_SIZE - sizeof(ulong));
+    *saddr = STACKMAGIC; //top of page
     *--saddr = pid;
     *--saddr = ppcb->stklen;
     *--saddr = (ulong)ppcb->stkbase;
-  */
-    //*--saddr = (ulong)ppcb->tickets;
+
     /* Handle variable number of arguments passed to starting function   */
     if (nargs)
     {
@@ -95,9 +91,8 @@ syscall create(void *funcaddr, ulong ssize,unsigned int priority, char *name, ul
     }
     ppcb->ctx[CTX_RA] = (ulong)userret;
     ppcb->ctx[CTX_PC] = (ulong)funcaddr;
-    //ppcb->ctx[CTX_SP] = (ulong)saddr;
-
-
+    ppcb->ctx[CTX_SP] = (ulong)saddr;
+    // NEED EXTRA LINES HERE
     // TODO:  Place arguments into context and/or activation record.
     //        See K&R 7.3 for example using va_start, va_arg and
     //        va_end macros for variable argument functions.
@@ -112,7 +107,7 @@ syscall create(void *funcaddr, ulong ssize,unsigned int priority, char *name, ul
      }
 
     for(i = ARG_REG_MAX; i < nargs; i++) {
-       saddr[i - ARG_REG_MAX] = va_arg(ap, ulong); //NEED TO NOT DECREMENT AND TREAT AS AN ARRAY. THE FORMULA INSIDE PUTS AT 0, 1, 2
+       saddr[i - ARG_REG_MAX] = va_arg(ap, ulong);
     }
 
     return pid;
@@ -146,6 +141,6 @@ void userret(void)
 {
     // ASSIGNMENT 5 TODO: Replace the call to kill(); with user_kill();
     // when you believe your trap handler is working in Assignment 5
-    user_kill();
-    //kill(currpid);
+     user_kill();
+ //   kill(currpid);
 }
