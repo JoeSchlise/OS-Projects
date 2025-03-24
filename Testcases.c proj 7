@@ -89,9 +89,27 @@ void testcases(void)
         switch (c)
         {
                 case '0':
-                        // TODO: Write a testcase that creates a user process
-                        // and prints out it's page table
-                        break;
+                {
+                    kprintf("Test 0: Create a user process and print its page table\r\n");
+                
+                    // Dummy user process function
+                    void userfunc(void) {
+                        while (1) {
+                            user_yield(); // keep it alive
+                        }
+                    }
+                
+                    // Create the user process
+                    pid_typ newpid = create((void *)userfunc, 4096, PRIORITY_LOW, "UserProc", 0);
+                    ready(newpid, RESCHED_NO);
+                
+                    // Print the page table
+                    pgtbl userpt = proctab[newpid].pagetable;
+                    printPageTable(userpt);
+                
+                    break;
+                }
+
                 case '1':
                         // TODO: Write a testcase that demonstrates a user
                         // process cannot access certain areas of memory
