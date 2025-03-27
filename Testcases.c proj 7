@@ -1,15 +1,3 @@
-/**
- * @file testcases.c
- * @provides testcases
- *
- *
- * Modified by:
- *
- * TA-BOT:MAILTO
- *
- */
-/* Embedded XINU, Copyright (C) 2023.  All rights reserved. */
-
 #include <xinu.h>
 
 /* This fake page table will allow you to test your printPageTable function
@@ -77,30 +65,28 @@ void printPageTable(pgtbl pagetable)
 /**
  * testcases - called after initialization completes to test things.
  */
+void userfunc(void) {
+    while (1) {
+        user_yield(); // keep it alive
+    }
+}
 void testcases(void)
 {
-        uchar c;
-
-        kprintf("===TEST BEGIN===\r\n");
-
-        // TODO: Test your operating system!
-
-        c = kgetc();
-        switch (c)
-        {
+                uchar c;
+        
+                kprintf("===TEST BEGIN===\r\n");
+        
+                // TODO: Test your operating system!
+        
+                c = kgetc();
+                switch (c)
+                {
                 case '0':
                 {
                     kprintf("Test 0: Create a user process and print its page table\r\n");
                 
-                    // Dummy user process function
-                    void userfunc(void) {
-                        while (1) {
-                            user_yield(); // keep it alive
-                        }
-                    }
-                
                     // Create the user process
-                    pid_typ newpid = create((void *)userfunc, 4096, PRIORITY_LOW, "UserProc", 0);
+                    pid_typ newpid = create((void *)userfunc, INITSTK, PRIORITY_LOW, "UserProc", 0);
                     ready(newpid, RESCHED_NO);
                 
                     // Print the page table
@@ -109,11 +95,23 @@ void testcases(void)
                 
                     break;
                 }
-
                 case '1':
-                        // TODO: Write a testcase that demonstrates a user
-                        // process cannot access certain areas of memory
-                        break;
+                {
+                    kprintf("Test 1: User process attempting to access kernel memory\r\n");
+                
+                
+                    void illegalAccess(void) {
+                        ulong *kernel_ptr = (ulong *)0x00000000;
+                        ulong val = *kernel_ptr;
+                        (void)val;
+                        user_yield();
+                    }
+                
+                    pid_typ pid = create((void *)illegalAccess, INITSTK, PRIORITY_LOW, "IllegalUser", 0);
+                    ready(pid, RESCHED_NO);
+                    break;
+                }
+
                 case '2':
                         // TODO: Write a testcase that demonstrates a user
                         // process can read kernel variables but cannot write
@@ -124,11 +122,6 @@ void testcases(void)
                         // and print out a Null Pointer Exception.  Write a
                         // testcase that demonstrates your OS can detect a
                         // Null Pointer Exception.
-                        break;
-                case '4':
-                        kprintf("Testing fake page table printing:\r\n");
-                        pgtbl fakeTable = createFakeTable();
-                        printPageTable(fakeTable);
                         break;
                 default:
                         break;
