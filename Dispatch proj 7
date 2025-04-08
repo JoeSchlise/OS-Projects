@@ -1,0 +1,87 @@
+/**
+ * @file dispatch.c
+ * @provides dispatch
+ *
+ */
+/* Embedded XINU, Copyright (C) 2008, 2023.  All rights reserved. */
+
+
+#include <xinu.h>
+/**
+ * COSC 3250 - Project #5
+ * Explain briefly the functionality of the program.
+ * @author Joe Schlise and Mosa Abduljalil
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO joseph.schlise@marquette.edu Mosa.abduljalil@marquette.edu
+ */
+
+
+
+/**
+ * @ingroup process
+ * Dispatch the trap or exception handler, called via interrupt.S
+ * @param cause  The value of the scause register
+ * @param stval  The value of the stval register
+ * @param frame  The stack pointer of the process that caused the interupt
+ * @param program_counter  The value of the sepc register
+ */
+
+ulong dispatch(ulong cause, ulong val, ulong *frame, ulong *program_counter) {
+    ulong swi_opcode;
+    ulong *swap_area = proctab[currpid].swaparea;
+pcb *ppcb = NULL;
+        int result;
+
+    if((long)cause > 0) {
+        cause = cause << 1;
+        cause = cause >> 1;
+        if (cause == E_ENVCALL_FROM_UMODE) {
+                ulong syscall_num = swap_area[7]; //leaves space in a0-a6 for arguments
+                ulong ret_val = syscall_dispatch(syscall_num, swap_area);// need arguments
+                swap_area[0] = ret_val;
+                ppcb = &proctab[currpid];
+                ppcb->swaparea[CTX_A0] = result;
+                set_sepc(program_counter + 4);
+        } else {
+                xtrap(swap_area, cause, val, program_counter);
+        }
+    } else {
+    cause = cause << 1;
+    cause = cause >> 1;
+    uint irq_num;
+
+    volatile uint *int_sclaim = (volatile uint *)(PLIC_BASE + 0x201004);
+    irq_num = *int_sclaim;
+
+    if(cause == I_SUPERVISOR_EXTERNAL) {
+        interrupt_handler_t handler = interruptVector[irq_num];
+
+        *int_sclaim = irq_num;
+        if (handler)
+        {
+            (*handler) ();
+        } else {
+            kprintf("ERROR: No handler registered for interrupt %u\r\n",
+                    irq_num);
+
+            while (1)
+                ;
+        }
+    }
+}
+        ppcb = &proctab[currpid];
+        return MAKE_SATP(currpid, (ulong)proctab[currpid].pagetable);
+}
+       /**
+        *
+        * TODO:
+        * Check to ensure the trap is an environment call from U-Mode
+        * Find the system call number that's triggered
+        * Pass the system call number and any arguments into syscall_dispatch.
+        * Make sure to set the return value in the appropriate spot.
+        * Update the program counter appropriately with set_sepc
+        *
+        * If the trap is not an environment call from U-Mode call xtrap
+        */
+
+
